@@ -1,6 +1,6 @@
 'use strict';
 
-const store = require('./store');
+const store = require('../lib/store');
 
 module.exports = function tent(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
