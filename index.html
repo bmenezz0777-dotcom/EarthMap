@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Earthdance Radar — Give Peace A Dance</title>
-  <meta name="description" content="Localizador tático de amigos e barracas para o Earthdance Festival. 100% Free, zero chaves de API, GPS em tempo real e mapa livre.">
+  <title>Earthdance Radar — RS 2026</title>
+  <meta name="description" content="Encontre a sua tribo, sua barraca e os caminhos do Earthdance RS 2026. Mapa livre, GPS e bússola no seu celular.">
   <meta name="theme-color" content="#05060a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -50,7 +50,7 @@
           </svg>
         </div>
         <div class="titles">
-          <h1>EARTHDANCE <span class="badge-tag">RADAR</span></h1>
+          <h1>EARTHDANCE <span class="badge-tag">RS 2026 · RADAR</span></h1>
           <div class="live-status">
             <span id="badge-sync" class="status-pill status-connecting">🟢 Conectando...</span>
             <span id="badge-gps" class="status-pill">🛰️ Buscando GPS...</span>
@@ -65,7 +65,7 @@
 
     <!-- HUD de Telemetria do Usuário -->
     <section class="hud">
-      <div class="hud-item">
+      <div class="hud-item hud-person">
         <span class="hud-label">VOCÊ</span>
         <strong id="hud-nick-val">Guerreiro</strong>
       </div>
@@ -87,19 +87,19 @@
       <!-- Card do Alvo Selecionado -->
       <div class="target-card">
         <div class="target-card-header">
-          <span class="target-tag">ALVO SELECIONADO:</span>
+          <span class="target-tag">SEU CAMINHO</span>
           <span id="target-type-badge" class="target-type">CAMP</span>
         </div>
         <div class="target-card-body">
-          <h2 id="target-name">Minha Barraca</h2>
+          <h2 id="target-name">Encontre o seu caminho.</h2>
           <div class="metrics-grid">
             <div class="metric-col">
               <span id="target-distance" class="metric-big">-- m</span>
               <span class="metric-sub">DISTÂNCIA EM LINHA RETA</span>
             </div>
             <div class="metric-col">
-              <span id="target-direction" class="metric-med">Aguardando bússola...</span>
-              <span class="metric-sub">DIREÇÃO RELATIVA</span>
+            <span id="target-direction" class="metric-med">Ative a localização</span>
+              <span class="metric-sub">DIREÇÃO</span>
             </div>
           </div>
         </div>
@@ -154,16 +154,16 @@
         <button id="btn-fix-tent-gps" class="btn-action btn-tent-action">
           <span class="btn-icon">🏕️</span>
           <div class="btn-desc">
-            <span class="btn-headline">FIXAR MINHA BARRACA AQUI</span>
-            <span class="btn-subtext">Grava seu GPS atual como seu acampamento oficial</span>
+            <span class="btn-headline">FIXAR BARRACA</span>
+            <span class="btn-subtext">Salve este ponto como sua base</span>
           </div>
         </button>
 
         <button id="btn-activate-compass" class="btn-action btn-compass-action">
           <span class="btn-icon">🧭</span>
           <div class="btn-desc">
-            <span id="btn-compass-text" class="btn-headline">ATIVAR / CALIBRAR BÚSSOLA</span>
-            <span class="btn-subtext">Habilita o sensor do celular para girar a seta</span>
+            <span id="btn-compass-text" class="btn-headline">ATIVAR BÚSSOLA</span>
+            <span class="btn-subtext">Receba direções precisas até seu destino</span>
           </div>
         </button>
 
@@ -207,8 +207,8 @@
         
         <!-- Ferramentas Rápidas Flutuantes no Mapa -->
         <div class="map-floating-bar">
-          <button id="btn-map-recenter" class="btn-map-float">📍 Centralizar em Mim</button>
-          <button id="btn-map-tent" class="btn-map-float">🏕️ Ver Minha Barraca</button>
+          <button id="btn-map-recenter" class="btn-map-float">📍 Minha posição</button>
+          <button id="btn-map-tent" class="btn-map-float">🏕️ Minha barraca</button>
         </div>
         
         <!-- Dica de Marcação no Mapa -->
