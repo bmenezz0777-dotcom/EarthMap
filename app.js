@@ -1,6 +1,6 @@
 // ===================================================
-// EARTHDANCE RADAR — CLIENT LOGIC
-// 100% Free · Zero API Keys · Real-time GPS & Compass
+// EARTHDANCE RADAR — MOTOR DEFINITIVO
+// 100% Free · Zero API Keys · Sincronização Híbrida P2P + Gossip Vercel
 // ===================================================
 
 (function() {
@@ -10,13 +10,15 @@
   const state = {
     deviceId: getOrCreateDeviceId(),
     nickname: localStorage.getItem('earthdance_nick') || '',
-    myLocation: { latitude: null, longitude: null, accuracy: null, speed: null },
+    myLocation: { lat: null, lng: null, accuracy: null, speed: null },
+    lastLocation: null,
     heading: null,
+    cog: null, // Course Over Ground (fallback)
     compassActive: false,
     myTent: getStoredTent(),
-    friends: [],
-    allTents: [],
-    target: null, // { type: 'user'|'tent'|'mine', id: string, name: string, latitude: number, longitude: number }
+    friends: new Map(), // id -> friend
+    allTents: new Map(), // deviceId -> tent
+    target: null, // { type: 'mine'|'user'|'tent', id: string, name: string, lat: number, lng: number }
     map: null,
     mapMarkers: {
       me: null,
@@ -24,46 +26,54 @@
       friends: new Map(),
       tents: new Map()
     },
-    syncInterval: null,
-    currentTab: 'radar'
+    peer: null,
+    peerConnections: new Map(),
+    syncTimer: null,
+    lastAlignedVibrate: 0
   };
 
-  // DOM
+  // DOM Elements
   const dom = {
-    setupScreen: document.getElementById('setup-screen'),
+    setupModal: document.getElementById('setup-modal'),
     setupForm: document.getElementById('setup-form'),
-    setupNickname: document.getElementById('setup-nickname'),
-    connectionStatus: document.getElementById('connection-status'),
-    hudNick: document.getElementById('hud-nick'),
-    hudGps: document.getElementById('hud-gps'),
-    hudCompass: document.getElementById('hud-compass'),
-    targetPulse: document.getElementById('target-pulse'),
-    targetLabel: document.getElementById('target-label'),
-    targetDistDisplay: document.getElementById('target-dist-display'),
-    targetDirDisplay: document.getElementById('target-dir-display'),
+    nickInput: document.getElementById('nick-input'),
+    userDisplayNick: document.getElementById('user-display-nick'),
+    btnQuickNick: document.getElementById('btn-quick-nick'),
+    badgeSync: document.getElementById('badge-sync'),
+    badgeGps: document.getElementById('badge-gps'),
+    hudNickVal: document.getElementById('hud-nick-val'),
+    hudGpsVal: document.getElementById('hud-gps-val'),
+    hudCompassVal: document.getElementById('hud-compass-val'),
+    targetName: document.getElementById('target-name'),
+    targetTypeBadge: document.getElementById('target-type-badge'),
+    targetDistance: document.getElementById('target-distance'),
+    targetDirection: document.getElementById('target-direction'),
+    targetAlignedAlert: document.getElementById('target-aligned-alert'),
+    radarNeedle: document.getElementById('radar-needle'),
+    btnFixTentGps: document.getElementById('btn-fix-tent-gps'),
     btnActivateCompass: document.getElementById('btn-activate-compass'),
-    btnFixTent: document.getElementById('btn-fix-tent'),
-    btnStopFollow: document.getElementById('btn-stop-follow'),
-    myTentCard: document.getElementById('my-tent-card'),
-    btnAimMyTent: document.getElementById('btn-aim-my-tent'),
-    nearbyCount: document.getElementById('nearby-count'),
-    nearbyChipsContainer: document.getElementById('nearby-chips-container'),
-    btnViewAllPeople: document.getElementById('btn-view-all-people'),
-    peopleTotal: document.getElementById('people-total'),
-    peopleListContainer: document.getElementById('people-list-container'),
-    settingsNickDisplay: document.getElementById('settings-nick-display'),
-    settingsNickInput: document.getElementById('settings-nick-input'),
+    btnCompassText: document.getElementById('btn-compass-text'),
+    btnStopTarget: document.getElementById('btn-stop-target'),
+    myTentQuickCard: document.getElementById('my-tent-quick-card'),
+    btnAimTentRadar: document.getElementById('btn-aim-tent-radar'),
+    nearbyCountVal: document.getElementById('nearby-count-val'),
+    nearbyChipsList: document.getElementById('nearby-chips-list'),
+    btnSwitchToPeople: document.getElementById('btn-switch-to-people'),
+    peopleCountHeader: document.getElementById('people-count-header'),
+    peopleCardsList: document.getElementById('people-cards-list'),
+    settingsNickHeader: document.getElementById('settings-nick-header'),
+    settingsInputNick: document.getElementById('settings-input-nick'),
     btnSaveSettingsNick: document.getElementById('btn-save-settings-nick'),
-    btnTestGps: document.getElementById('btn-test-gps'),
-    btnTestCompass: document.getElementById('btn-test-compass'),
-    btnRemoveTent: document.getElementById('btn-remove-tent'),
-    btnCenterMe: document.getElementById('btn-center-me'),
-    btnCenterTent: document.getElementById('btn-center-tent'),
-    toast: document.getElementById('toast'),
-    toastText: document.getElementById('toast-text'),
-    toastClose: document.getElementById('toast-close'),
-    navBtns: document.querySelectorAll('.nav-btn'),
-    tabPages: {
+    btnDiagGps: document.getElementById('btn-diag-gps'),
+    btnDiagCompass: document.getElementById('btn-diag-compass'),
+    btnDeleteTent: document.getElementById('btn-delete-tent'),
+    btnMapRecenter: document.getElementById('btn-map-recenter'),
+    btnMapTent: document.getElementById('btn-map-tent'),
+    appToast: document.getElementById('app-toast'),
+    toastMessage: document.getElementById('toast-message'),
+    toastDismiss: document.getElementById('toast-dismiss'),
+    navItems: document.querySelectorAll('.nav-item'),
+    tabViews: {
       radar: document.getElementById('tab-radar-view'),
       map: document.getElementById('tab-map-view'),
       people: document.getElementById('tab-people-view'),
@@ -72,20 +82,28 @@
   };
 
   // ===================================================
-  // 1. BOOTSTRAP & IDENTITY
+  // 1. BOOTSTRAP & IDENTIDADE
   // ===================================================
   function init() {
+    registerServiceWorker();
     checkIdentity();
     setupNavigation();
     setupActions();
     startGps();
-    startSync();
+    initPeerJs();
+    startServerlessSync();
+  }
+
+  function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(console.warn);
+    }
   }
 
   function getOrCreateDeviceId() {
     let id = localStorage.getItem('earthdance_device_id');
     if (!id) {
-      id = 'ed_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36);
+      id = 'ed_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
       localStorage.setItem('earthdance_device_id', id);
     }
     return id;
@@ -93,8 +111,8 @@
 
   function getStoredTent() {
     try {
-      const stored = localStorage.getItem('earthdance_my_tent');
-      return stored ? JSON.parse(stored) : null;
+      const s = localStorage.getItem('earthdance_my_tent');
+      return s ? JSON.parse(s) : null;
     } catch (e) {
       return null;
     }
@@ -102,146 +120,167 @@
 
   function checkIdentity() {
     if (!state.nickname) {
-      dom.setupScreen.classList.remove('hidden');
+      dom.setupModal.classList.remove('hidden');
     } else {
-      updateNickUI(state.nickname);
+      updateNickDisplays(state.nickname);
     }
 
     dom.setupForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const val = dom.setupNickname.value.trim();
+      const val = dom.nickInput.value.trim();
       const nick = val || 'Guerreiro #' + state.deviceId.slice(-4);
       saveNick(nick);
-      dom.setupScreen.classList.add('hidden');
+      dom.setupModal.classList.add('hidden');
+    });
+
+    dom.btnQuickNick.addEventListener('click', () => {
+      dom.nickInput.value = state.nickname;
+      dom.setupModal.classList.remove('hidden');
+      dom.nickInput.focus();
     });
 
     if (state.myTent) {
-      dom.myTentCard.classList.remove('hidden');
-      dom.btnRemoveTent.classList.remove('hidden');
+      dom.myTentQuickCard.classList.remove('hidden');
+      dom.btnDeleteTent.classList.remove('hidden');
     }
   }
 
   function saveNick(nick) {
     state.nickname = nick;
     localStorage.setItem('earthdance_nick', nick);
-    updateNickUI(nick);
-    sync();
+    updateNickDisplays(nick);
+    syncServerless();
     showToast('Bem-vindo à Earthdance, ' + nick + '! 🌿');
   }
 
-  function updateNickUI(nick) {
-    dom.hudNick.textContent = nick;
-    dom.settingsNickDisplay.textContent = nick;
-    dom.settingsNickInput.value = nick;
+  function updateNickDisplays(nick) {
+    dom.userDisplayNick.textContent = nick;
+    dom.hudNickVal.textContent = nick;
+    dom.settingsNickHeader.textContent = nick;
+    dom.settingsInputNick.value = nick;
   }
 
   // ===================================================
-  // 2. TABS & BOTTOM NAVIGATION
+  // 2. NAVEGAÇÃO POR ABAS
   // ===================================================
   function setupNavigation() {
-    dom.navBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const tab = btn.dataset.tab;
+    dom.navItems.forEach(item => {
+      item.addEventListener('click', () => {
+        const tab = item.dataset.tab;
         switchTab(tab);
       });
     });
 
-    dom.btnViewAllPeople.addEventListener('click', () => {
-      switchTab('people');
-    });
+    dom.btnSwitchToPeople.addEventListener('click', () => switchTab('people'));
   }
 
   function switchTab(tabName) {
-    state.currentTab = tabName;
-
-    dom.navBtns.forEach(btn => {
-      btn.classList.toggle('selected', btn.dataset.tab === tabName);
+    dom.navItems.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tabName);
     });
 
-    Object.keys(dom.tabPages).forEach(key => {
-      dom.tabPages[key].classList.toggle('active', key === tabName);
+    Object.keys(dom.tabViews).forEach(key => {
+      dom.tabViews[key].classList.toggle('active', key === tabName);
     });
 
     if (tabName === 'map') {
-      ensureMap();
+      ensureLeafletMap();
     }
   }
 
   // ===================================================
-  // 3. SENSORS: GPS & COMPASS
+  // 3. SENSORES: GPS E BÚSSOLA AUDITADOS
   // ===================================================
   function startGps() {
     if (!('geolocation' in navigator)) {
-      dom.hudGps.textContent = 'Sem GPS';
+      dom.badgeGps.textContent = 'Sem GPS';
+      dom.hudGpsVal.textContent = 'Indisponível';
       return;
     }
 
     navigator.geolocation.watchPosition(
-      (pos) => {
-        state.myLocation.latitude = pos.coords.latitude;
-        state.myLocation.longitude = pos.coords.longitude;
+      pos => {
+        const prev = state.myLocation.lat ? { ...state.myLocation } : null;
+
+        state.myLocation.lat = pos.coords.latitude;
+        state.myLocation.lng = pos.coords.longitude;
         state.myLocation.accuracy = pos.coords.accuracy;
         state.myLocation.speed = pos.coords.speed;
 
+        // Course over ground (COG) calculation when moving
+        if (prev && pos.coords.speed && pos.coords.speed > 0.8) {
+          state.cog = calculateBearing(prev.lat, prev.lng, pos.coords.latitude, pos.coords.longitude);
+        }
+
         const acc = Math.round(pos.coords.accuracy);
-        dom.hudGps.textContent = `±${acc}m`;
+        dom.badgeGps.textContent = `🛰️ GPS ±${acc}m`;
+        dom.hudGpsVal.textContent = `±${acc}m`;
 
         updateRadarNavigation();
         updateMapSelf();
       },
-      (err) => {
-        console.warn('GPS Error:', err);
-        dom.hudGps.textContent = 'Erro';
+      err => {
+        console.warn('GPS Warning:', err);
+        dom.badgeGps.textContent = '🛰️ GPS Inativo';
+        dom.hudGpsVal.textContent = 'Sem Sinal';
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 2000,
+        maximumAge: 1000,
         timeout: 10000
       }
     );
   }
 
   function activateCompass() {
-    const handleOrientation = (e) => {
+    const onOrientation = (e) => {
       let h = null;
       if (typeof e.webkitCompassHeading === 'number') {
+        // iOS Safari (True North)
         h = e.webkitCompassHeading;
       } else if (e.alpha !== null) {
+        // Android / Standard
         h = (360 - e.alpha) % 360;
       }
 
       if (h !== null) {
         state.heading = h;
         state.compassActive = true;
-        dom.hudCompass.textContent = 'ATIVA';
-        dom.btnActivateCompass.textContent = '🧭 BÚSSOLA ATIVA';
+        dom.hudCompassVal.textContent = 'ATIVA';
+        dom.btnCompassText.textContent = 'BÚSSOLA CALIBRADA E ATIVA';
         dom.btnActivateCompass.classList.add('active');
         updateRadarNavigation();
       }
     };
 
+    // iOS 13+ requires explicit permission requested synchronously inside a click event
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
       DeviceOrientationEvent.requestPermission()
         .then(res => {
           if (res === 'granted') {
-            window.addEventListener('deviceorientation', handleOrientation, true);
-            showToast('Bússola ativada com sucesso!');
+            window.addEventListener('deviceorientation', onOrientation, true);
+            showToast('🧭 Bússola ativada com sucesso!');
           } else {
-            showToast('Permissão de bússola negada.');
+            showToast('Permissão de orientação foi negada.');
           }
         })
         .catch(err => {
           console.warn(err);
-          showToast('Erro ao ativar bússola.');
+          showToast('Erro ao autorizar bússola.');
         });
     } else {
-      window.addEventListener('deviceorientation', handleOrientation, true);
-      showToast('Bússola ativada!');
+      // Android / Desktop
+      if ('ondeviceorientationabsolute' in window) {
+        window.addEventListener('deviceorientationabsolute', onOrientation, true);
+      } else {
+        window.addEventListener('deviceorientation', onOrientation, true);
+      }
+      showToast('🧭 Bússola ativada!');
     }
   }
 
   // ===================================================
-  // 4. MATHEMATICS: HAVERSINE & BEARING
+  // 4. MATEMÁTICA GEODÉSICA: HAVERSINE & BEARING
   // ===================================================
   function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371000;
@@ -262,168 +301,148 @@
     return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
   }
 
-  function formatDistance(meters) {
-    if (meters == null) return '—';
+  function formatDist(meters) {
+    if (meters == null) return '-- m';
     if (meters >= 1000) return (meters / 1000).toFixed(1) + ' km';
     return meters + ' m';
   }
 
   function updateRadarNavigation() {
-    const { myLocation, target, heading } = state;
+    // Default to my tent if no target is active
+    if (!state.target && state.myTent) {
+      state.target = {
+        type: 'mine',
+        id: state.deviceId,
+        name: 'Minha Barraca',
+        lat: state.myTent.lat,
+        lng: state.myTent.lng
+      };
+    }
 
-    if (!target) {
-      dom.targetLabel.textContent = 'SELECIONE UMA PESSOA';
-      dom.targetDistDisplay.textContent = '♥';
-      dom.targetDirDisplay.textContent = 'ou marque sua barraca';
-      dom.btnStopFollow.classList.add('hidden');
+    if (!state.target) {
+      dom.targetName.textContent = 'Nenhum alvo selecionado';
+      dom.targetTypeBadge.textContent = 'CAMP';
+      dom.targetDistance.textContent = '-- m';
+      dom.targetDirection.textContent = 'Selecione um guerreiro ou fixe sua barraca';
+      dom.targetAlignedAlert.classList.add('hidden');
+      dom.btnStopTarget.classList.add('hidden');
       return;
     }
 
-    dom.btnStopFollow.classList.remove('hidden');
+    dom.btnStopTarget.classList.remove('hidden');
+    dom.targetName.textContent = state.target.name;
+    dom.targetTypeBadge.textContent = state.target.type === 'mine' ? 'MINHA BARRACA' : state.target.type === 'tent' ? 'BARRACA' : 'AMIGO';
 
-    if (myLocation.latitude === null || myLocation.longitude === null) {
-      dom.targetLabel.textContent = 'SEGUINDO ' + target.name.toUpperCase();
-      dom.targetDistDisplay.textContent = '...';
-      dom.targetDirDisplay.textContent = 'Aguardando sinal GPS';
+    const { myLocation, target, heading, cog } = state;
+
+    if (myLocation.lat === null || myLocation.lng === null) {
+      dom.targetDistance.textContent = '...';
+      dom.targetDirection.textContent = 'Aguardando GPS';
       return;
     }
 
-    const dist = calculateDistance(
-      myLocation.latitude, myLocation.longitude,
-      target.latitude, target.longitude
-    );
+    const dist = calculateDistance(myLocation.lat, myLocation.lng, target.lat, target.lng);
+    dom.targetDistance.textContent = formatDist(dist);
 
-    dom.targetLabel.textContent = 'SEGUINDO ' + target.name.toUpperCase();
-    dom.targetDistDisplay.textContent = formatDistance(dist);
+    const bearing = calculateBearing(myLocation.lat, myLocation.lng, target.lat, target.lng);
+    const activeHeading = heading != null ? heading : (cog != null ? cog : 0);
+    const relativeAngle = (bearing - activeHeading + 360) % 360;
 
-    const bearing = calculateBearing(
-      myLocation.latitude, myLocation.longitude,
-      target.latitude, target.longitude
-    );
+    dom.radarNeedle.style.transform = `rotate(${relativeAngle}deg)`;
 
-    const currentHeading = heading != null ? heading : 0;
-    const relativeAngle = (bearing - currentHeading + 360) % 360;
+    const diff = relativeAngle > 180 ? relativeAngle - 360 : relativeAngle;
+    const absDiff = Math.abs(diff);
 
-    dom.targetPulse.style.transform = `rotate(${relativeAngle}deg)`;
-
-    let dirText = `${Math.round(bearing)}° NO MAPA`;
-    if (heading != null) {
-      const diff = relativeAngle > 180 ? relativeAngle - 360 : relativeAngle;
-      const absDiff = Math.abs(diff);
+    if (heading != null || cog != null) {
       if (absDiff <= 12) {
-        dirText = '⬆ EM FRENTE';
-      } else if (diff > 0) {
-        dirText = `↗ ${Math.round(absDiff)}° À DIREITA`;
-      } else {
-        dirText = `↖ ${Math.round(absDiff)}° À ESQUERDA`;
-      }
-    }
+        dom.targetDirection.textContent = '⬆ EM FRENTE';
+        dom.targetAlignedAlert.classList.remove('hidden');
 
-    dom.targetDirDisplay.textContent = dirText;
+        // Haptic pulse when facing target directly (at most once every 5 seconds)
+        const now = Date.now();
+        if (now - state.lastAlignedVibrate > 5000) {
+          state.lastAlignedVibrate = now;
+          if ('vibrate' in navigator) navigator.vibrate([40, 30, 40]);
+        }
+      } else {
+        dom.targetAlignedAlert.classList.add('hidden');
+        if (diff > 0) {
+          dom.targetDirection.textContent = `↗ ${Math.round(absDiff)}° À DIREITA`;
+        } else {
+          dom.targetDirection.textContent = `↖ ${Math.round(absDiff)}° À ESQUERDA`;
+        }
+        if (absDiff > 135) {
+          dom.targetDirection.textContent = '⬇ ATRÁS DE VOCÊ';
+        }
+      }
+    } else {
+      dom.targetDirection.textContent = `${Math.round(bearing)}° (Ative a bússola para virar)`;
+    }
   }
 
   function setTarget(targetObj) {
     state.target = targetObj;
     updateRadarNavigation();
-    renderPeopleList();
     renderNearbyChips();
+    renderPeopleList();
   }
 
   // ===================================================
-  // 5. ACTIONS: TENT & BUTTONS
+  // 5. REGISTRO DE BARRACA (DUPLO: GPS OU CLIQUE NO MAPA)
   // ===================================================
   function setupActions() {
     dom.btnActivateCompass.addEventListener('click', activateCompass);
 
-    // Fix Tent
-    dom.btnFixTent.addEventListener('click', () => {
-      if (state.myLocation.latitude === null) {
-        alert('Aguardando sinal de GPS para fixar a barraca. Ative a localização no seu navegador!');
+    // 5.1. Fix Tent via current GPS
+    dom.btnFixTentGps.addEventListener('click', () => {
+      if (state.myLocation.lat === null) {
+        alert('Aguardando sinal de GPS para fixar a barraca. Ative a localização no navegador!');
         return;
       }
-
-      const tentData = {
-        latitude: state.myLocation.latitude,
-        longitude: state.myLocation.longitude,
-        accuracy: state.myLocation.accuracy || 5,
-        savedAt: Date.now()
-      };
-
-      state.myTent = tentData;
-      localStorage.setItem('earthdance_my_tent', JSON.stringify(tentData));
-
-      dom.myTentCard.classList.remove('hidden');
-      dom.btnRemoveTent.classList.remove('hidden');
-
-      if ('vibrate' in navigator) navigator.vibrate([100, 50, 100]);
-
-      setTarget({
-        type: 'mine',
-        id: state.deviceId,
-        name: 'Minha Barraca',
-        latitude: tentData.latitude,
-        longitude: tentData.longitude
-      });
-
-      // API save
-      fetch('/api/tent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          deviceId: state.deviceId,
-          nick: state.nickname || 'Minha Barraca',
-          lat: tentData.latitude,
-          lng: tentData.longitude,
-          accuracy: tentData.accuracy
-        })
-      }).catch(console.warn);
-
-      showToast('🏕️ Barraca fixada com sucesso!');
-      updateMapSelf();
+      saveMyTentCoords(state.myLocation.lat, state.myLocation.lng, state.myLocation.accuracy || 5);
+      showToast('🏕️ Barraca fixada nas suas coordenadas atuais!');
     });
 
-    // Aim My Tent
-    dom.btnAimMyTent.addEventListener('click', () => {
+    // 5.2. Aim Tent Radar Button
+    dom.btnAimTentRadar.addEventListener('click', () => {
       if (!state.myTent) return;
       setTarget({
         type: 'mine',
         id: state.deviceId,
         name: 'Minha Barraca',
-        latitude: state.myTent.latitude,
-        longitude: state.myTent.longitude
+        lat: state.myTent.lat,
+        lng: state.myTent.lng
       });
       switchTab('radar');
     });
 
-    // Stop Follow
-    dom.btnStopFollow.addEventListener('click', () => {
+    // 5.3. Stop following
+    dom.btnStopTarget.addEventListener('click', () => {
       state.target = null;
       updateRadarNavigation();
-      renderPeopleList();
       renderNearbyChips();
+      renderPeopleList();
     });
 
-    // Settings actions
+    // Settings
     dom.btnSaveSettingsNick.addEventListener('click', () => {
-      const val = dom.settingsNickInput.value.trim();
-      if (val) saveNick(val);
+      const v = dom.settingsInputNick.value.trim();
+      if (v) saveNick(v);
     });
 
-    dom.btnTestGps.addEventListener('click', () => {
+    dom.btnDiagGps.addEventListener('click', () => {
       startGps();
       showToast('Testando GPS...');
     });
 
-    dom.btnTestCompass.addEventListener('click', () => {
-      activateCompass();
-    });
+    dom.btnDiagCompass.addEventListener('click', () => activateCompass());
 
-    dom.btnRemoveTent.addEventListener('click', () => {
-      if (confirm('Deseja realmente remover a localização da sua barraca?')) {
+    dom.btnDeleteTent.addEventListener('click', () => {
+      if (confirm('Deseja realmente remover sua barraca?')) {
         state.myTent = null;
         localStorage.removeItem('earthdance_my_tent');
-        dom.myTentCard.classList.add('hidden');
-        dom.btnRemoveTent.classList.add('hidden');
+        dom.myTentQuickCard.classList.add('hidden');
+        dom.btnDeleteTent.classList.add('hidden');
         if (state.target && state.target.type === 'mine') {
           state.target = null;
           updateRadarNavigation();
@@ -433,57 +452,156 @@
       }
     });
 
-    // Map quick tools
-    dom.btnCenterMe.addEventListener('click', () => {
-      if (state.map && state.myLocation.latitude !== null) {
-        state.map.setView([state.myLocation.latitude, state.myLocation.longitude], 17);
+    // Map Quick Tools
+    dom.btnMapRecenter.addEventListener('click', () => {
+      if (state.map && state.myLocation.lat !== null) {
+        state.map.setView([state.myLocation.lat, state.myLocation.lng], 17);
       }
     });
 
-    dom.btnCenterTent.addEventListener('click', () => {
+    dom.btnMapTent.addEventListener('click', () => {
       if (state.map && state.myTent) {
-        state.map.setView([state.myTent.latitude, state.myTent.longitude], 17);
+        state.map.setView([state.myTent.lat, state.myTent.lng], 17);
       } else {
         showToast('Você ainda não fixou sua barraca.');
       }
     });
 
-    // Toast close
-    dom.toastClose.addEventListener('click', () => {
-      dom.toast.classList.add('hidden');
+    dom.toastDismiss.addEventListener('click', () => {
+      dom.appToast.classList.add('hidden');
     });
   }
 
+  function saveMyTentCoords(lat, lng, acc) {
+    const tentData = {
+      lat,
+      lng,
+      accuracy: acc || 5,
+      savedAt: Date.now()
+    };
+
+    state.myTent = tentData;
+    localStorage.setItem('earthdance_my_tent', JSON.stringify(tentData));
+
+    dom.myTentQuickCard.classList.remove('hidden');
+    dom.btnDeleteTent.classList.remove('hidden');
+
+    if ('vibrate' in navigator) navigator.vibrate([80, 40, 80]);
+
+    setTarget({
+      type: 'mine',
+      id: state.deviceId,
+      name: 'Minha Barraca',
+      lat: tentData.lat,
+      lng: tentData.lng
+    });
+
+    // Send to Vercel API immediately
+    fetch('/api/tent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deviceId: state.deviceId,
+        nick: state.nickname || 'Minha Barraca',
+        lat: tentData.lat,
+        lng: tentData.lng,
+        accuracy: tentData.accuracy
+      })
+    }).catch(console.warn);
+
+    // Broadcast via WebRTC P2P to nearby peers
+    broadcastP2P({
+      type: 'TENT_UPDATE',
+      deviceId: state.deviceId,
+      nick: state.nickname,
+      tent: tentData
+    });
+
+    updateMapSelf();
+  }
+
   function showToast(text) {
-    dom.toastText.textContent = text;
-    dom.toast.classList.remove('hidden');
+    dom.toastMessage.textContent = text;
+    dom.appToast.classList.remove('hidden');
     setTimeout(() => {
-      dom.toast.classList.add('hidden');
-    }, 3500);
+      dom.appToast.classList.add('hidden');
+    }, 4000);
   }
 
   // ===================================================
-  // 6. SYNC WITH VERCEL SERVERLESS API
+  // 6. SINCRONIZAÇÃO HÍBRIDA (WebRTC P2P + Gossip Vercel)
   // ===================================================
-  function startSync() {
-    sync();
-    state.syncInterval = setInterval(sync, 4000);
-  }
+  function initPeerJs() {
+    if (typeof Peer === 'undefined') return;
 
-  async function sync() {
     try {
+      // Direct WebRTC connection with room identifier
+      const peer = new Peer('ed_tribe_' + state.deviceId, {
+        debug: 0
+      });
+
+      peer.on('open', () => {
+        state.peer = peer;
+        dom.badgeSync.textContent = '🟢 P2P + Vercel';
+        dom.badgeSync.className = 'status-pill status-online';
+      });
+
+      peer.on('connection', conn => {
+        conn.on('data', data => handleP2PData(data));
+      });
+
+      peer.on('error', () => {
+        // Silent fallback to Vercel serverless
+      });
+    } catch (e) {
+      console.warn('PeerJS fallback to serverless:', e);
+    }
+  }
+
+  function broadcastP2P(msg) {
+    state.peerConnections.forEach(conn => {
+      if (conn.open) conn.send(msg);
+    });
+  }
+
+  function handleP2PData(msg) {
+    if (!msg || !msg.type) return;
+    if (msg.type === 'PEER_PING' && msg.user) {
+      state.friends.set(msg.user.id, msg.user);
+      renderNearbyChips();
+      renderPeopleList();
+      updateMapMarkers();
+    } else if (msg.type === 'TENT_UPDATE' && msg.tent) {
+      state.allTents.set(msg.deviceId, {
+        deviceId: msg.deviceId,
+        nick: msg.nick,
+        ...msg.tent
+      });
+      updateMapMarkers();
+    }
+  }
+
+  function startServerlessSync() {
+    syncServerless();
+    state.syncTimer = setInterval(syncServerless, 4000);
+  }
+
+  async function syncServerless() {
+    try {
+      // Gossip payload: includes cached friends and tents so any container gets full state
+      const knownPeers = Array.from(state.friends.values()).slice(0, 30);
+      const knownTents = Array.from(state.allTents.values()).slice(0, 30);
+
       const payload = {
         deviceId: state.deviceId,
         nick: state.nickname || 'Guerreiro da Paz',
-        lat: state.myLocation.latitude,
-        lng: state.myLocation.longitude,
+        lat: state.myLocation.lat,
+        lng: state.myLocation.lng,
         accuracy: state.myLocation.accuracy,
         heading: state.heading,
-        tent: state.myTent ? {
-          lat: state.myTent.latitude,
-          lng: state.myTent.longitude,
-          accuracy: state.myTent.accuracy
-        } : null
+        tent: state.myTent,
+        knownPeers,
+        knownTents
       };
 
       const res = await fetch('/api/ping', {
@@ -493,20 +611,17 @@
       });
 
       if (!res.ok) throw new Error('Status ' + res.status);
-
       const data = await res.json();
 
-      dom.connectionStatus.className = 'status online';
-      dom.connectionStatus.querySelector('span').textContent = 'ONLINE';
+      dom.badgeSync.className = 'status-pill status-online';
+      dom.badgeSync.textContent = '🟢 Online';
 
       if (Array.isArray(data.friends)) {
-        state.friends = data.friends;
-        dom.nearbyCount.textContent = data.friends.length;
-        dom.peopleTotal.textContent = data.friends.length;
+        data.friends.forEach(f => state.friends.set(f.id, f));
       }
 
       if (Array.isArray(data.allTents)) {
-        state.allTents = data.allTents;
+        data.allTents.forEach(t => state.allTents.set(t.deviceId, t));
       }
 
       renderNearbyChips();
@@ -514,103 +629,110 @@
       updateMapMarkers();
 
     } catch (err) {
-      dom.connectionStatus.className = 'status unstable';
-      dom.connectionStatus.querySelector('span').textContent = 'INSTÁVEL';
+      dom.badgeSync.className = 'status-pill status-connecting';
+      dom.badgeSync.textContent = '🟠 Instável';
     }
   }
 
   // ===================================================
-  // 7. RENDERING LISTS
+  // 7. RENDERIZAÇÃO DE LISTAS E CHIPS
   // ===================================================
   function renderNearbyChips() {
-    dom.nearbyChipsContainer.innerHTML = '';
+    dom.nearbyChipsList.innerHTML = '';
+    const friendsList = Array.from(state.friends.values());
+    dom.nearbyCountVal.textContent = friendsList.length;
 
-    if (state.friends.length === 0) {
-      dom.nearbyChipsContainer.innerHTML = '<div class="empty-chips">Ninguém por perto ainda...</div>';
+    if (friendsList.length === 0) {
+      dom.nearbyChipsList.innerHTML = '<div class="chips-empty">Nenhum guerreiro por perto ainda...</div>';
       return;
     }
 
-    const sorted = [...state.friends].map(f => {
+    const sorted = friendsList.map(f => {
       let d = null;
-      if (state.myLocation.latitude !== null && f.lat !== null) {
-        d = calculateDistance(state.myLocation.latitude, state.myLocation.longitude, f.lat, f.lng);
+      if (state.myLocation.lat !== null && f.lat !== null) {
+        d = calculateDistance(state.myLocation.lat, state.myLocation.lng, f.lat, f.lng);
       }
       return { ...f, dist: d };
-    }).sort((a, b) => (a.dist || 999999) - (b.dist || 999999));
+    }).sort((a, b) => (a.dist || 99999) - (b.dist || 99999));
 
-    sorted.slice(0, 6).forEach(friend => {
-      const isTarget = state.target && state.target.id === friend.id;
+    sorted.slice(0, 6).forEach(f => {
+      const isTarget = state.target && state.target.id === f.id;
       const chip = document.createElement('button');
-      chip.className = 'person-chip';
-      chip.style.borderColor = isTarget ? 'var(--green)' : 'var(--line)';
+      chip.className = 'chip-item';
+      chip.style.borderColor = isTarget ? 'var(--color-green)' : 'var(--border-line)';
       chip.innerHTML = `
-        <span>${friend.nick.slice(0, 1).toUpperCase()}</span>
-        <b>${escapeHtml(friend.nick)}</b>
-        <small>${formatDistance(friend.dist)}</small>
+        <span class="chip-avatar">${f.nick.slice(0, 1).toUpperCase()}</span>
+        <span class="chip-name">${escapeHtml(f.nick)}</span>
+        <span class="chip-dist">${formatDist(f.dist)}</span>
       `;
       chip.addEventListener('click', () => {
-        if (friend.lat === null) {
-          showToast(friend.nick + ' ainda não tem sinal GPS.');
+        if (f.lat === null) {
+          showToast(f.nick + ' ainda não tem sinal GPS.');
           return;
         }
         setTarget({
           type: 'user',
-          id: friend.id,
-          name: friend.nick,
-          latitude: friend.lat,
-          longitude: friend.lng
+          id: f.id,
+          name: f.nick,
+          lat: f.lat,
+          lng: f.lng
         });
-        if ('vibrate' in navigator) navigator.vibrate(40);
+        if ('vibrate' in navigator) navigator.vibrate(30);
       });
-      dom.nearbyChipsContainer.appendChild(chip);
+      dom.nearbyChipsList.appendChild(chip);
     });
   }
 
   function renderPeopleList() {
-    dom.peopleListContainer.innerHTML = '';
+    dom.peopleCardsList.innerHTML = '';
+    const friendsList = Array.from(state.friends.values());
+    dom.peopleCountHeader.textContent = friendsList.length;
 
-    if (state.friends.length === 0) {
-      dom.peopleListContainer.innerHTML = '<div class="empty">Ninguém apareceu ainda.<br>Quando seus amigos entrarem, eles estarão aqui.</div>';
+    if (friendsList.length === 0) {
+      dom.peopleCardsList.innerHTML = `
+        <div class="empty-state">
+          Ninguém apareceu ainda.<br>
+          Compartilhe o link com seus amigos da rave para eles aparecerem aqui!
+        </div>
+      `;
       return;
     }
 
-    state.friends.forEach(friend => {
+    friendsList.forEach(f => {
       let d = null;
-      if (state.myLocation.latitude !== null && friend.lat !== null) {
-        d = calculateDistance(state.myLocation.latitude, state.myLocation.longitude, friend.lat, friend.lng);
+      if (state.myLocation.lat !== null && f.lat !== null) {
+        d = calculateDistance(state.myLocation.lat, state.myLocation.lng, f.lat, f.lng);
       }
 
-      const isTarget = state.target && state.target.id === friend.id;
-
-      const card = document.createElement('div');
-      card.className = 'person-card';
-      card.style.borderColor = isTarget ? 'var(--green)' : 'var(--line)';
-      card.innerHTML = `
-        <span class="avatar">${friend.nick.slice(0, 1).toUpperCase()}</span>
-        <div>
-          <strong>${escapeHtml(friend.nick)}</strong>
-          <small>● ONLINE ${friend.accuracy ? `· GPS ±${Math.round(friend.accuracy)}m` : ''}</small>
+      const isTarget = state.target && state.target.id === f.id;
+      const row = document.createElement('div');
+      row.className = `person-row-card ${isTarget ? 'active-target' : ''}`;
+      row.innerHTML = `
+        <div class="person-row-avatar">${f.nick.slice(0, 1).toUpperCase()}</div>
+        <div class="person-row-details">
+          <strong>${escapeHtml(f.nick)}</strong>
+          <small>● ONLINE ${f.accuracy ? `· GPS ±${Math.round(f.accuracy)}m` : ''}</small>
         </div>
-        <b>${formatDistance(d)}</b>
+        <div class="person-row-dist">${formatDist(d)}</div>
       `;
 
-      card.addEventListener('click', () => {
-        if (friend.lat === null) {
-          showToast(friend.nick + ' ainda não enviou coordenadas.');
+      row.addEventListener('click', () => {
+        if (f.lat === null) {
+          showToast(f.nick + ' não enviou GPS.');
           return;
         }
         setTarget({
           type: 'user',
-          id: friend.id,
-          name: friend.nick,
-          latitude: friend.lat,
-          longitude: friend.lng
+          id: f.id,
+          name: f.nick,
+          lat: f.lat,
+          lng: f.lng
         });
-        if ('vibrate' in navigator) navigator.vibrate(40);
+        if ('vibrate' in navigator) navigator.vibrate(30);
         switchTab('radar');
       });
 
-      dom.peopleListContainer.appendChild(card);
+      dom.peopleCardsList.appendChild(row);
     });
   }
 
@@ -620,9 +742,9 @@
   }
 
   // ===================================================
-  // 8. 100% FREE LEAFLET MAP (OpenStreetMap - ZERO API Keys)
+  // 8. MAPA 100% FREE (OpenStreetMap + Leaflet)
   // ===================================================
-  function ensureMap() {
+  function ensureLeafletMap() {
     if (state.map) {
       state.map.invalidateSize();
       return;
@@ -630,19 +752,36 @@
 
     if (typeof L === 'undefined') return;
 
-    const lat = state.myLocation.latitude || -23.55052;
-    const lng = state.myLocation.longitude || -46.633308;
+    const initialLat = state.myLocation.lat || -23.55052;
+    const initialLng = state.myLocation.lng || -46.633308;
 
-    state.map = L.map('map-element', {
+    state.map = L.map('map-canvas', {
       zoomControl: false,
       attributionControl: true
-    }).setView([lat, lng], 17);
+    }).setView([initialLat, initialLng], 17);
 
-    // 100% Free OpenStreetMap Public Tiles (NO API KEY REQUIRED)
+    // 100% Free OpenStreetMap Public Tiles (NO API KEY EVER)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap'
     }).addTo(state.map);
+
+    // Allow user to tap ANYWHERE on the map to set their tent location!
+    state.map.on('click', e => {
+      const { lat, lng } = e.latlng;
+      const popupContent = document.createElement('div');
+      popupContent.innerHTML = `
+        <strong>Marcar Minha Barraca Aqui?</strong><br>
+        <button id="btn-popup-set-tent">SIM, FIXAR NESTE PONTO 🏕️</button>
+      `;
+      popupContent.querySelector('#btn-popup-set-tent').addEventListener('click', () => {
+        saveMyTentCoords(lat, lng, 3);
+        state.map.closePopup();
+        showToast('🏕️ Barraca marcada no ponto selecionado do mapa!');
+      });
+
+      L.popup().setLatLng(e.latlng).setContent(popupContent).openOn(state.map);
+    });
 
     updateMapSelf();
     updateMapMarkers();
@@ -652,32 +791,32 @@
     if (!state.map) return;
     const { myLocation, myTent } = state;
 
-    if (myLocation.latitude !== null) {
+    if (myLocation.lat !== null) {
       if (!state.mapMarkers.me) {
-        state.mapMarkers.me = L.circleMarker([myLocation.latitude, myLocation.longitude], {
+        state.mapMarkers.me = L.circleMarker([myLocation.lat, myLocation.lng], {
           radius: 9,
-          color: '#00ff88',
-          fillColor: '#00ff88',
-          fillOpacity: 0.9
+          color: '#00ff9d',
+          fillColor: '#00ff9d',
+          fillOpacity: 0.95
         }).addTo(state.map).bindPopup('<strong>Você está aqui</strong>');
       } else {
-        state.mapMarkers.me.setLatLng([myLocation.latitude, myLocation.longitude]);
+        state.mapMarkers.me.setLatLng([myLocation.lat, myLocation.lng]);
       }
     }
 
-    if (myTent && myTent.latitude) {
+    if (myTent && myTent.lat) {
       if (!state.mapMarkers.myTent) {
         const tentIcon = L.divIcon({
           className: 'tent-marker',
-          html: '<div>🏕️</div>',
+          html: '<div style="font-size:28px; filter:drop-shadow(0 0 8px #f59e0b);">🏕️</div>',
           iconSize: [32, 32],
           iconAnchor: [16, 16]
         });
-        state.mapMarkers.myTent = L.marker([myTent.latitude, myTent.longitude], { icon: tentIcon })
+        state.mapMarkers.myTent = L.marker([myTent.lat, myTent.lng], { icon: tentIcon })
           .addTo(state.map)
           .bindPopup('<strong>Minha Barraca</strong>');
       } else {
-        state.mapMarkers.myTent.setLatLng([myTent.latitude, myTent.longitude]);
+        state.mapMarkers.myTent.setLatLng([myTent.lat, myTent.lng]);
       }
     }
   }
@@ -692,13 +831,13 @@
       if (!marker) {
         const icon = L.divIcon({
           className: 'custom-marker',
-          html: `<div class="map-avatar">${f.nick.slice(0, 1).toUpperCase()}</div>`,
-          iconSize: [36, 36],
-          iconAnchor: [18, 18]
+          html: `<div style="background:#07110d; border:2px solid #00ff9d; box-shadow:0 0 12px #00ff9d; border-radius:50%; width:34px; height:34px; display:grid; place-items:center; color:#fff; font-weight:900; font-size:12px;">${f.nick.slice(0, 1).toUpperCase()}</div>`,
+          iconSize: [34, 34],
+          iconAnchor: [17, 17]
         });
         marker = L.marker([f.lat, f.lng], { icon })
           .addTo(state.map)
-          .bindPopup(`<strong>${escapeHtml(f.nick)}</strong><br><button onclick="window.__aim('${f.id}')">SEGUIR</button>`);
+          .bindPopup(`<strong>${escapeHtml(f.nick)}</strong><br><button onclick="window.__aim('${f.id}')">SEGUIR COM A SETA</button>`);
         state.mapMarkers.friends.set(f.id, marker);
       } else {
         marker.setLatLng([f.lat, f.lng]);
@@ -712,13 +851,13 @@
       if (!marker) {
         const icon = L.divIcon({
           className: 'tent-marker',
-          html: '<div>⛺</div>',
-          iconSize: [28, 28],
-          iconAnchor: [14, 14]
+          html: '<div style="font-size:24px; filter:drop-shadow(0 0 6px #fbbf24);">⛺</div>',
+          iconSize: [26, 26],
+          iconAnchor: [13, 13]
         });
         marker = L.marker([t.lat, t.lng], { icon })
           .addTo(state.map)
-          .bindPopup(`<strong>Barraca de ${escapeHtml(t.nick)}</strong><br><button onclick="window.__aimTent('${t.deviceId}')">IR PARA BARRACA</button>`);
+          .bindPopup(`<strong>Barraca de ${escapeHtml(t.nick)}</strong><br><button onclick="window.__aimTent('${t.deviceId}')">IR PARA ESTA BARRACA</button>`);
         state.mapMarkers.tents.set(t.deviceId, marker);
       } else {
         marker.setLatLng([t.lat, t.lng]);
@@ -726,30 +865,30 @@
     });
   }
 
-  // Global helpers for popup buttons
+  // Global popup helpers
   window.__aim = (userId) => {
-    const friend = state.friends.find(f => f.id === userId);
-    if (friend) {
+    const f = state.friends.get(userId);
+    if (f) {
       setTarget({
         type: 'user',
-        id: friend.id,
-        name: friend.nick,
-        latitude: friend.lat,
-        longitude: friend.lng
+        id: f.id,
+        name: f.nick,
+        lat: f.lat,
+        lng: f.lng
       });
       switchTab('radar');
     }
   };
 
   window.__aimTent = (deviceId) => {
-    const tent = state.allTents.find(t => t.deviceId === deviceId);
-    if (tent) {
+    const t = state.allTents.get(deviceId);
+    if (t) {
       setTarget({
         type: 'tent',
-        id: tent.deviceId,
-        name: `Barraca de ${tent.nick}`,
-        latitude: tent.lat,
-        longitude: tent.lng
+        id: t.deviceId,
+        name: `Barraca de ${t.nick}`,
+        lat: t.lat,
+        lng: t.lng
       });
       switchTab('radar');
     }

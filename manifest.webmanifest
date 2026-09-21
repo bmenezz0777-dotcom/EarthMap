@@ -4,8 +4,8 @@
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#05080c",
-  "theme_color": "#05080c",
+  "background_color": "#05060a",
+  "theme_color": "#05060a",
   "description": "Localizador tático de amigos e barracas para o Earthdance Festival",
   "icons": [
     {

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Earthdance Radar — Give Peace A Dance</title>
-  <meta name="description" content="Localizador tático de amigos e barracas para o Earthdance Festival. 100% Free, sem API keys, com bússola direcional e mapa ao vivo.">
+  <meta name="description" content="Localizador tático de amigos e barracas para o Earthdance Festival. 100% Free, zero chaves de API, GPS em tempo real e mapa livre.">
   <meta name="theme-color" content="#05060a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -13,194 +13,291 @@
   <!-- Leaflet CSS 100% Free (OpenStreetMap) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   
-  <!-- Estilos da Aplicação -->
+  <!-- Estilos Bioluminescentes Earthdance -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- Tela de Configuração Inicial de Nick (Se ainda não tiver) -->
-  <div id="setup-screen" class="setup hidden">
-    <div class="orbital"><span>♥</span></div>
-    <p class="eyebrow">EARTHDANCE FESTIVAL</p>
-    <h1>O coração<br><em>e a batida</em><br>da humanidade</h1>
-    <p class="intro">Encontre sua família. Marque sua barraca. Siga quem você ama na pista de dança.</p>
-    
-    <form id="setup-form" class="setup-card">
-      <label for="setup-nickname">Como a tribo te conhece na rave?</label>
-      <input type="text" id="setup-nickname" placeholder="Seu nick (ex: Breno, PsyNinja...)" maxlength="32" autofocus autocomplete="off">
-      <button type="submit">ENTRAR NO RADAR <span>→</span></button>
-      <small>Sem senha. Sem cadastro. 100% gratuito e direto no radar.</small>
-    </form>
+  <!-- Modal Inicial de Nick (Rápido e Não-Bloqueante) -->
+  <div id="setup-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="mandala-glow"></div>
+      <div class="mandala-symbol">☮️</div>
+      <h2>EARTHDANCE FESTIVAL</h2>
+      <p class="subtitle">Give Peace A Dance · Localizador de Amigos & Barracas</p>
+      
+      <form id="setup-form" class="modal-form">
+        <label for="nick-input">Como a tribo te chama na pista?</label>
+        <input type="text" id="nick-input" placeholder="Seu nick (ex: Breno, PsyNinja...)" maxlength="24" autofocus autocomplete="off">
+        <button type="submit" class="btn-primary-earth">ENTRAR NO RADAR 🚀</button>
+        <p class="modal-note">Sem senhas e sem cadastro. 100% gratuito e direto no radar.</p>
+      </form>
+    </div>
   </div>
 
-  <!-- Casca Principal do Aplicativo -->
-  <div id="app-shell" class="app-shell">
+  <!-- Estrutura Principal da Aplicação -->
+  <div class="app-shell">
     
-    <!-- Topbar com Status -->
+    <!-- Topbar com Identidade Earthdance e Status -->
     <header class="topbar">
-      <div>
-        <span class="brand-dot">♥</span>
-        <strong>EARTHDANCE</strong>
-        <small>RADAR</small>
+      <div class="brand">
+        <div class="sacred-mandala">
+          <svg viewBox="0 0 100 100" class="spin-slow">
+            <circle cx="50" cy="50" r="45" stroke="#00ff9d" stroke-width="2" fill="none" opacity="0.4"/>
+            <circle cx="50" cy="50" r="30" stroke="#8b5cf6" stroke-width="2" fill="none" stroke-dasharray="4 2"/>
+            <circle cx="50" cy="50" r="15" stroke="#f59e0b" stroke-width="1.5" fill="none"/>
+            <path d="M50 5 L50 95 M5 50 L95 50 M18 18 L82 82 M18 82 L82 18" stroke="#00ff9d" stroke-width="1" opacity="0.3"/>
+          </svg>
+        </div>
+        <div class="titles">
+          <h1>EARTHDANCE <span class="badge-tag">RADAR</span></h1>
+          <div class="live-status">
+            <span id="badge-sync" class="status-pill status-connecting">🟢 Conectando...</span>
+            <span id="badge-gps" class="status-pill">🛰️ Buscando GPS...</span>
+          </div>
+        </div>
       </div>
-      <div id="connection-status" class="status offline">
-        <i></i> <span>OFFLINE</span>
-      </div>
+      <button id="btn-quick-nick" class="user-pill" title="Clique para alterar seu nick">
+        <span class="avatar-icon">👤</span>
+        <span id="user-display-nick">Guerreiro</span>
+      </button>
     </header>
 
-    <!-- HUD de Informações Principais -->
+    <!-- HUD de Telemetria do Usuário -->
     <section class="hud">
-      <div>
-        <span>VOCÊ</span>
-        <strong id="hud-nick">Guerreiro</strong>
+      <div class="hud-item">
+        <span class="hud-label">VOCÊ</span>
+        <strong id="hud-nick-val">Guerreiro</strong>
       </div>
-      <div>
-        <span>GPS</span>
-        <strong id="hud-gps">Buscando...</strong>
+      <div class="hud-item">
+        <span class="hud-label">GPS SATÉLITE</span>
+        <strong id="hud-gps-val">Localizando...</strong>
       </div>
-      <div>
-        <span>BÚSSOLA</span>
-        <strong id="hud-compass">—</strong>
+      <div class="hud-item">
+        <span class="hud-label">BÚSSOLA</span>
+        <strong id="hud-compass-val">—</strong>
       </div>
     </section>
 
     <!-- ============================================== -->
-    <!-- ABA 1: RADAR & BÚSSOLA                         -->
+    <!-- ABA 1: RADAR & BÚSSOLA TÁTICA                  -->
     <!-- ============================================== -->
-    <section id="tab-radar-view" class="tab-page radar-page active">
-      <div class="radar-wrap">
-        
-        <!-- Radar Grid Visual -->
-        <div class="radar-grid">
-          <span class="north">N</span>
-          <span class="east">L</span>
-          <span class="south">S</span>
-          <span class="west">O</span>
-          <div class="ring r1"></div>
-          <div class="ring r2"></div>
-          <div class="ring r3"></div>
-          <div class="sweep"></div>
-          <div class="radar-heart">♥</div>
-          
-          <!-- Seta Direcional Apontando para o Alvo -->
-          <div id="target-pulse" class="target-pulse" style="transform: rotate(0deg);">
-            <div class="arrow"></div>
+    <section id="tab-radar-view" class="tab-view active">
+      
+      <!-- Card do Alvo Selecionado -->
+      <div class="target-card">
+        <div class="target-card-header">
+          <span class="target-tag">ALVO SELECIONADO:</span>
+          <span id="target-type-badge" class="target-type">CAMP</span>
+        </div>
+        <div class="target-card-body">
+          <h2 id="target-name">Minha Barraca</h2>
+          <div class="metrics-grid">
+            <div class="metric-col">
+              <span id="target-distance" class="metric-big">-- m</span>
+              <span class="metric-sub">DISTÂNCIA EM LINHA RETA</span>
+            </div>
+            <div class="metric-col">
+              <span id="target-direction" class="metric-med">Aguardando bússola...</span>
+              <span class="metric-sub">DIREÇÃO RELATIVA</span>
+            </div>
           </div>
         </div>
-
-        <!-- Informações do Alvo Mirado -->
-        <div class="radar-info">
-          <small id="target-label">SELECIONE UMA PESSOA</small>
-          <strong id="target-dist-display">♥</strong>
-          <span id="target-dir-display">ou marque sua barraca</span>
+        <div id="target-aligned-alert" class="target-aligned-alert hidden">
+          ✨ VOCÊ ESTÁ DE FRENTE PARA O ALVO! SIGA EM FRENTE ✨
         </div>
       </div>
 
-      <!-- Ações Rápidas -->
-      <div class="quick-actions">
-        <button id="btn-activate-compass" class="btn-action">🧭 ATIVAR BÚSSOLA</button>
-        <button id="btn-fix-tent" class="btn-action btn-tent">🏕️ FIXAR MINHA BARRACA AQUI</button>
-        <button id="btn-stop-follow" class="btn-action ghost hidden">PARAR DE SEGUIR</button>
+      <!-- Instrumento Visual do Radar Holográfico -->
+      <div class="radar-container">
+        <div class="radar-hud">
+          <div class="ring ring-3"></div>
+          <div class="ring ring-2"></div>
+          <div class="ring ring-1"></div>
+          <div class="crosshair-h"></div>
+          <div class="crosshair-v"></div>
+          <div class="sweep-beam"></div>
+          
+          <span class="cardinal card-n">N</span>
+          <span class="cardinal card-e">L</span>
+          <span class="cardinal card-s">S</span>
+          <span class="cardinal card-w">O</span>
+
+          <!-- Seta Direcional de Alta Precisão (Gira no Centro) -->
+          <div id="radar-needle" class="radar-needle" style="transform: rotate(0deg);">
+            <svg viewBox="0 0 100 160" class="needle-svg">
+              <defs>
+                <linearGradient id="needleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#00ff9d"/>
+                  <stop offset="60%" stop-color="#00e5ff"/>
+                  <stop offset="100%" stop-color="#8b5cf6"/>
+                </linearGradient>
+                <filter id="glowEffect" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="4" result="blur"/>
+                  <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                </filter>
+              </defs>
+              <polygon points="50,10 85,120 50,95 15,120" fill="url(#needleGrad)" filter="url(#glowEffect)"/>
+              <circle cx="50" cy="95" r="6" fill="#ffffff"/>
+            </svg>
+          </div>
+
+          <!-- Ponto Central "Você" -->
+          <div class="center-beacon">
+            <div class="beacon-pulse"></div>
+          </div>
+        </div>
       </div>
 
-      <!-- Card da Minha Barraca Salva -->
-      <div id="my-tent-card" class="my-tent hidden">
-        <span>🏕️</span>
-        <div>
+      <!-- Botões de Ação de Alta Ergonomia para Rave -->
+      <div class="actions-grid">
+        <button id="btn-fix-tent-gps" class="btn-action btn-tent-action">
+          <span class="btn-icon">🏕️</span>
+          <div class="btn-desc">
+            <span class="btn-headline">FIXAR MINHA BARRACA AQUI</span>
+            <span class="btn-subtext">Grava seu GPS atual como seu acampamento oficial</span>
+          </div>
+        </button>
+
+        <button id="btn-activate-compass" class="btn-action btn-compass-action">
+          <span class="btn-icon">🧭</span>
+          <div class="btn-desc">
+            <span id="btn-compass-text" class="btn-headline">ATIVAR / CALIBRAR BÚSSOLA</span>
+            <span class="btn-subtext">Habilita o sensor do celular para girar a seta</span>
+          </div>
+        </button>
+
+        <button id="btn-stop-target" class="btn-action btn-ghost hidden">
+          PARAR DE SEGUIR
+        </button>
+      </div>
+
+      <!-- Card Rápido de Atalho da Minha Barraca -->
+      <div id="my-tent-quick-card" class="my-tent-box hidden">
+        <span class="tent-icon">🏕️</span>
+        <div class="tent-info">
           <small>MINHA BARRACA</small>
-          <strong>Localização salva no GPS</strong>
+          <strong>Localização Salva</strong>
         </div>
-        <button id="btn-aim-my-tent">IR →</button>
+        <button id="btn-aim-tent-radar" class="btn-aim-tent">MIRAR SETA →</button>
       </div>
 
-      <!-- Pessoas Próximas (Chips Horizontais) -->
-      <div class="nearby-head">
-        <div>
-          <small>PESSOAS ONLINE</small>
-          <strong id="nearby-count">0</strong>
+      <!-- Tribo Online: Chips Rápidos Horizontais -->
+      <div class="nearby-section">
+        <div class="nearby-header">
+          <div>
+            <small>PESSOAS ONLINE</small>
+            <strong id="nearby-count-val">0</strong>
+          </div>
+          <button id="btn-switch-to-people">VER TODAS →</button>
         </div>
-        <button id="btn-view-all-people">VER TODAS →</button>
+        <div id="nearby-chips-list" class="chips-scroll-row">
+          <div class="chips-empty">Aguardando guerreiros da paz na pista...</div>
+        </div>
       </div>
-      <div id="nearby-chips-container" class="nearby-row">
-        <div class="empty-chips">Aguardando guerreiros entrarem na pista...</div>
-      </div>
+
     </section>
 
     <!-- ============================================== -->
     <!-- ABA 2: MAPA TÁTICO (100% FREE - OpenStreetMap) -->
     <!-- ============================================== -->
-    <section id="tab-map-view" class="tab-page map-page">
-      <div class="map-container">
-        <div id="map-element" style="height:100%; width:100%;"></div>
-        <div class="map-quick-buttons">
-          <button id="btn-center-me">📍 Em Mim</button>
-          <button id="btn-center-tent">🏕️ Minha Barraca</button>
+    <section id="tab-map-view" class="tab-view">
+      <div class="map-wrapper">
+        <div id="map-canvas" style="height:100%; width:100%;"></div>
+        
+        <!-- Ferramentas Rápidas Flutuantes no Mapa -->
+        <div class="map-floating-bar">
+          <button id="btn-map-recenter" class="btn-map-float">📍 Centralizar em Mim</button>
+          <button id="btn-map-tent" class="btn-map-float">🏕️ Ver Minha Barraca</button>
+        </div>
+        
+        <!-- Dica de Marcação no Mapa -->
+        <div class="map-instruction-toast">
+          💡 Dica: Toque em qualquer ponto do festival no mapa para marcar sua barraca lá!
         </div>
       </div>
     </section>
 
     <!-- ============================================== -->
-    <!-- ABA 3: PESSOAS ONLINE                          -->
+    <!-- ABA 3: PESSOAS / TRIBO ONLINE                  -->
     <!-- ============================================== -->
-    <section id="tab-people-view" class="tab-page people-page">
-      <div class="page-title">
-        <span>PESSOAS NA RAVE</span>
-        <h2><span id="people-total">0</span> online</h2>
+    <section id="tab-people-view" class="tab-view people-page">
+      <div class="page-head">
+        <span>TRIBO EARTHDANCE</span>
+        <h2><span id="people-count-header">0</span> online</h2>
       </div>
-      <div id="people-list-container">
-        <div class="empty">Ninguém apareceu ainda.<br>Quando seus amigos abrirem o link, eles aparecerão aqui instantaneamente.</div>
+      <div id="people-cards-list" class="people-list-container">
+        <div class="empty-state">
+          Ninguém apareceu ainda.<br>
+          Quando seus amigos abrirem o link, eles aparecerão aqui instantaneamente!
+        </div>
       </div>
     </section>
 
     <!-- ============================================== -->
     <!-- ABA 4: CONFIGURAÇÕES & DISPOSITIVO             -->
     <!-- ============================================== -->
-    <section id="tab-settings-view" class="tab-page settings-page">
-      <div class="page-title">
+    <section id="tab-settings-view" class="tab-view settings-page">
+      <div class="page-head">
         <span>CONFIGURAÇÕES</span>
-        <h2 id="settings-nick-display">Guerreiro</h2>
+        <h2 id="settings-nick-header">Guerreiro</h2>
       </div>
-      <label>Seu nick na rave
-        <input type="text" id="settings-nick-input" maxlength="32">
-      </label>
-      <button id="btn-save-settings-nick">SALVAR NICK</button>
-      <button id="btn-test-gps">📍 TESTAR GPS</button>
-      <button id="btn-test-compass">🧭 TESTAR BÚSSOLA</button>
-      <button id="btn-remove-tent" class="danger hidden">REMOVER MINHA BARRACA</button>
-      <div class="privacy">
-        <strong>100% Gratuito & Privacidade</strong>
-        <p>Este app funciona sem chaves de API pagas, utilizando satélites GPS do celular e o mapa livre mundial OpenStreetMap. Seus dados ficam salvos de forma anônima.</p>
+      
+      <div class="settings-group">
+        <label for="settings-input-nick">Seu Apelido na Rave</label>
+        <div class="input-inline">
+          <input type="text" id="settings-input-nick" maxlength="24">
+          <button id="btn-save-settings-nick">SALVAR</button>
+        </div>
+      </div>
+
+      <div class="settings-buttons">
+        <button id="btn-diag-gps" class="btn-settings-tool">📍 Testar / Requisitar GPS</button>
+        <button id="btn-diag-compass" class="btn-settings-tool">🧭 Testar / Requisitar Bússola</button>
+        <button id="btn-delete-tent" class="btn-settings-tool danger hidden">🗑️ Remover Minha Barraca</button>
+      </div>
+
+      <div class="privacy-box">
+        <strong>100% Free & Sem Recursos de Mentira</strong>
+        <p>Este app funciona através de satélites GPS reais e dados abertos do <strong>OpenStreetMap</strong>. Não exige chaves de API, não vende dados e conecta a tribo de forma anônima e segura.</p>
       </div>
     </section>
 
     <!-- Barra de Navegação Inferior (Bottom Nav) -->
     <nav class="bottom-nav">
-      <button class="nav-btn selected" data-tab="radar">
-        ◉<span>RADAR</span>
+      <button class="nav-item active" data-tab="radar">
+        <span class="nav-icon">◉</span>
+        <span class="nav-label">RADAR</span>
       </button>
-      <button class="nav-btn" data-tab="map">
-        ⌁<span>MAPA</span>
+      <button class="nav-item" data-tab="map">
+        <span class="nav-icon">⌁</span>
+        <span class="nav-label">MAPA</span>
       </button>
-      <button class="nav-btn" data-tab="people">
-        ◎<span>PESSOAS</span>
+      <button class="nav-item" data-tab="people">
+        <span class="nav-icon">◎</span>
+        <span class="nav-label">PESSOAS</span>
       </button>
-      <button class="nav-btn" data-tab="settings">
-        ⚙<span>CONFIG</span>
+      <button class="nav-item" data-tab="settings">
+        <span class="nav-icon">⚙</span>
+        <span class="nav-label">CONFIG</span>
       </button>
     </nav>
 
   </div>
 
-  <!-- Toast de Notificação -->
-  <div id="toast" class="toast hidden">
-    <span id="toast-text">Notificação</span>
-    <button id="toast-close">×</button>
+  <!-- Toast Flutuante de Alerta -->
+  <div id="app-toast" class="toast-card hidden">
+    <span id="toast-message">Mensagem</span>
+    <button id="toast-dismiss">×</button>
   </div>
 
-  <!-- Leaflet JS 100% Free -->
+  <!-- PeerJS para Sincronização P2P WebRTC Direta Entre Celulares (100% Free) -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+  <!-- Leaflet JS 100% Free (OpenStreetMap) -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   
-  <!-- Script Principal -->
+  <!-- Controlador do Earthdance Radar -->
   <script src="app.js"></script>
 </body>
 </html>

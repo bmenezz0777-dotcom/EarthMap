@@ -1,5 +1,6 @@
 {
   "name": "earthdance-radar",
-  "version": "1.0.0",
-  "private": true
+  "version": "2.0.0",
+  "private": true,
+  "description": "Earthdance Festival - Localizador Tático de Amigos e Barracas 100% Free"
 }
