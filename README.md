@@ -1,51 +1,20 @@
-# 🌿 Earthdance Radar — Localizador de Amigos & Barracas
+# ⚡ RadarEmRave — Vercel Ready (100% Free & Sem API Keys)
 
-Aplicação web móvel (PWA) de alta precisão para localização de amigos e barracas no festival **Earthdance**, pronta para hospedar na **Vercel** com zero configuração.
-
----
-
-## 📁 Estrutura desta Pasta (100% Pronta para Subir na Web)
-
-```
-earthdance-radar/
-├── api/
-│   ├── ping.js                  # Rota Vercel: telemetria de GPS, IP e lista de membros
-│   ├── tent.js                  # Rota Vercel: salva e atualiza a localização da barraca
-│   ├── store.js                 # Gerenciador de memória com autorregeneração mútua
-│   └── state.js                 # Rota Vercel: consulta geral de estado
-├── index.html                   # Interface do usuário (Radar HUD, Bússola e Mapa)
-├── style.css                    # Design bioluminescente temático Earthdance Festival
-├── app.js                       # Controlador client-side (GPS, Bússola, Barracas, Leaflet)
-├── manifest.webmanifest         # Configuração de PWA em tela cheia para celular
-├── vercel.json                  # Arquivo de configuração de rotas e CORS da Vercel
-├── server.js                    # Servidor local para testes no PC e Wi-Fi
-└── package.json                 # Metadados do projeto
-```
+Aplicação tática para o **Earthdance Festival** com bússola orientada por GPS, mapa tático 100% gratuito (OpenStreetMap livre) e fixação de barracas.
 
 ---
 
-## 🚀 Como Subir na Vercel
-
-### Opção 1: Arrastando no GitHub
-1. Crie um novo repositório no [GitHub](https://github.com/new) chamado `earthdance-radar`.
-2. Arraste todos os arquivos e a pasta `api/` desta pasta para o repositório.
-3. Acesse a [Vercel](https://vercel.com), clique em **Add New Project**, selecione o repositório e clique em **Deploy**.
-
-### Opção 2: Pelo Prompt de Comando (CMD)
-1. Abra o CMD nesta pasta:
-   ```cmd
-   cd "C:\Users\breno\OneDrive\Documentos\HTML's\earthdance-radar"
-   ```
-2. Execute o comando da Vercel:
-   ```cmd
-   npx vercel
-   ```
-3. Faça login e aperte **Enter** para aceitar os padrões. O link público será gerado em segundos!
+## 🎯 Por que esta versão é 100% funcional e livre:
+1. **Zero API Keys no Mapa**: Utiliza Leaflet + OpenStreetMap público livre. Não pede chave do Google Maps nem do Mapbox.
+2. **Zero Dependência do Supabase**: Não precisa criar conta no Supabase nem configurar chaves de banco de dados.
+3. **Sem Geofence Bloqueante**: Funciona em qualquer lugar do mundo (não bloqueia testes fora do evento).
+4. **Deploy Nativo na Vercel**: Frontend estático ultrarrápido + Serverless functions na pasta `/api`.
 
 ---
 
-## 💻 Testar no seu Computador / Celular (Wi-Fi)
-```cmd
-node server.js
-```
-Abra no navegador: `http://localhost:3000`
+## 🚀 Como Subir na Vercel em 1 Minuto:
+
+1. Suba os arquivos desta pasta para o seu repositório no **GitHub** (não precisa subir a pasta `_archive_nextjs_supabase`).
+2. Acesse a **[Vercel](https://vercel.com)**.
+3. Importe o repositório e clique em **Deploy**.
+4. O link público será gerado imediatamente e funcionará no celular de todo mundo!
