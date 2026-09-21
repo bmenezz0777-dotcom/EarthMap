@@ -1,14 +1,14 @@
-# ☮️ Earthdance Radar — Give Peace A Dance
+# ☮️ Earthdance Radar — RS 2026
 
-Localizador tático de amigos e barracas para o **Earthdance Festival**. 100% Free, zero chaves de API pagas, sem cadastros bloqueantes e pronto para deploy na **Vercel**.
+Localizador mobile-first de amigos e barracas para o **Earthdance Festival**. Mapa livre, GPS, bússola e PWA sem cadastro obrigatório, pronto para deploy na **Vercel**.
 
 ---
 
 ## 🎯 Por que esta versão realmente funciona:
 
-1. **Sincronização Híbrida (WebRTC P2P + Gossip Vercel)**:
-   - Os celulares conversam diretamente entre si na pista via WebRTC.
-   - Cada ping na Vercel sincroniza e repassa todos os nós conhecidos (Gossip Protocol), garantindo que ninguém se perca mesmo com reinício de containers da nuvem.
+1. **Radar e navegação no celular**:
+   - GPS, bússola e vibração orientam a pessoa até uma barraca ou amigo selecionado.
+   - A interface prioriza ações grandes, contraste e leitura rápida em ambiente externo.
 2. **Zero Chaves de API no Mapa**:
    - Utiliza OpenStreetMap livre mundial com Leaflet. Sem custos, sem limites e sem pedir cartão ou chaves de API.
 3. **Registro Duplo de Barraca**:
@@ -20,12 +20,14 @@ Localizador tático de amigos e barracas para o **Earthdance Festival**. 100% Fr
 
 ---
 
-## 🚀 Como Fazer o Deploy na Vercel em 1 Minuto:
+## 🚀 Deploy na Vercel
 
 1. Suba os arquivos desta pasta para um repositório no seu **GitHub** (ex: `earthdance-radar`).
 2. Acesse a **[Vercel](https://vercel.com)**.
 3. Clique em **Add New Project**, importe o repositório e clique em **Deploy**.
-4. O link público HTTPS será gerado imediatamente!
+4. O link público HTTPS será gerado imediatamente. As funções em `api/` são detectadas automaticamente.
+
+> **Nota de operação:** o diretório de pessoas/barracas desta versão usa memória efêmera da função. É apropriado para demonstração e testes locais; uma edição de produção para um festival deve conectar `api/store.js` a uma base com expiração (por exemplo, Vercel KV) e definir uma política de retenção/consentimento para coordenadas.
 
 ---
 

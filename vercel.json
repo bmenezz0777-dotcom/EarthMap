@@ -1,5 +1,22 @@
 {
   "version": 2,
+  "builds": [
+    { "src": "api/ping.js", "use": "@vercel/node" },
+    { "src": "api/tent.js", "use": "@vercel/node" },
+    { "src": "api/state.js", "use": "@vercel/node" },
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "app.js", "use": "@vercel/static" },
+    { "src": "style.css", "use": "@vercel/static" },
+    { "src": "manifest.webmanifest", "use": "@vercel/static" },
+    { "src": "sw.js", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/ping", "dest": "/api/ping.js" },
+    { "src": "/api/tent", "dest": "/api/tent.js" },
+    { "src": "/api/state", "dest": "/api/state.js" },
+    { "src": "/", "dest": "/index.html" },
+    { "src": "/(.*)", "dest": "/$1" }
+  ],
   "cleanUrls": true,
   "headers": [
     {

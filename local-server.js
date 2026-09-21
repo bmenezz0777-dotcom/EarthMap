@@ -21,6 +21,9 @@ const MIME_TYPES = {
   '.webmanifest': 'application/manifest+json'
 };
 
+// The API handlers are shared with Vercel and keep an in-memory store for
+// local/Wi-Fi validation. Persistent production storage can be plugged in
+// behind api/store.js when the event needs it.
 const store = require('./api/store');
 
 function getLocalIp() {
