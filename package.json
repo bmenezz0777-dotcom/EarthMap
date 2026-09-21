@@ -1,0 +1,12 @@
+{
+  "name": "earthdance-radar",
+  "version": "1.0.0",
+  "description": "Earthdance Festival - Localizador Tático de Amigos e Barracas pronto para Vercel",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["earthdance", "radar", "festival", "gps", "compass", "tent-tracker", "vercel"],
+  "author": "Breno",
+  "license": "MIT"
+}

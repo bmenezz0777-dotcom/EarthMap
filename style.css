@@ -1,0 +1,793 @@
+/* ===================================================
+   EARTHDANCE FESTIVAL — RADAR TÁTICO
+   Design Bioluminescente, Alta Legibilidade & Ergonomia Rave
+   =================================================== */
+
+:root {
+  --bg-deep: #05080c;
+  --bg-surface: #0a1017;
+  --bg-card: rgba(14, 22, 33, 0.85);
+  --border-neon: rgba(0, 255, 157, 0.25);
+  --border-purple: rgba(139, 92, 246, 0.3);
+
+  --color-emerald: #00ff9d;
+  --color-forest: #10b981;
+  --color-violet: #8b5cf6;
+  --color-magenta: #d946ef;
+  --color-amber: #f59e0b;
+  --color-gold: #fbbf24;
+
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --text-dim: #64748b;
+
+  --shadow-neon: 0 0 20px rgba(0, 255, 157, 0.25);
+  --shadow-purple: 0 0 25px rgba(139, 92, 246, 0.25);
+  --shadow-amber: 0 0 20px rgba(245, 158, 11, 0.3);
+
+  --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-deep);
+  color: var(--text-primary);
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 50% 100%, rgba(0, 255, 157, 0.1) 0%, transparent 50%);
+}
+
+/* ===================================================
+   HEADER
+   =================================================== */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(10, 16, 23, 0.95);
+  border-bottom: 1px solid var(--border-neon);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mandala-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+
+.spin-slow {
+  animation: spinSlow 30s linear infinite;
+}
+
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.festival-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge-radar {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  background: linear-gradient(135deg, var(--color-emerald), var(--color-violet));
+  color: #000;
+  border-radius: 4px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.header-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.badge {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.badge-pulse {
+  background: rgba(0, 255, 157, 0.15);
+  color: var(--color-emerald);
+  border: 1px solid rgba(0, 255, 157, 0.3);
+}
+
+.badge-dim {
+  opacity: 0.7;
+}
+
+.btn-nick-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid var(--border-purple);
+  padding: 6px 12px;
+  border-radius: 20px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-nick-pill:active {
+  transform: scale(0.96);
+  background: rgba(139, 92, 246, 0.3);
+}
+
+.edit-pencil {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+/* ===================================================
+   TABS DE NAVEGAÇÃO
+   =================================================== */
+.view-tabs {
+  display: flex;
+  padding: 6px 12px;
+  background: rgba(5, 8, 12, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 8px;
+}
+
+.tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.tab-btn.active {
+  background: rgba(0, 255, 157, 0.12);
+  border-color: var(--color-emerald);
+  color: var(--color-emerald);
+  box-shadow: 0 0 15px rgba(0, 255, 157, 0.15);
+}
+
+/* ===================================================
+   PAINEL PRINCIPAL & VIEWS
+   =================================================== */
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.view-panel {
+  display: none;
+  flex-direction: column;
+  padding: 14px 16px 80px 16px;
+  gap: 16px;
+}
+
+.view-panel.active {
+  display: flex;
+}
+
+/* Offline Banner */
+.offline-banner {
+  background: rgba(245, 158, 11, 0.2);
+  border-bottom: 1px solid var(--color-amber);
+  color: var(--color-amber);
+  font-size: 0.75rem;
+  padding: 6px 12px;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* ===================================================
+   TARGET CARD (ALVO ATUAL)
+   =================================================== */
+.target-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-neon);
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-neon);
+  backdrop-filter: blur(10px);
+}
+
+.target-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.target-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+}
+
+.target-type-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-amber);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.target-name-row h2 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.target-metrics-row {
+  display: flex;
+  gap: 16px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.metric-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.distance-block {
+  flex: 1;
+}
+
+.metric-value {
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--color-emerald);
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.metric-value-sub {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-violet);
+  margin-top: 4px;
+}
+
+.metric-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+.target-locked-alert {
+  margin-top: 12px;
+  padding: 8px;
+  background: rgba(0, 255, 157, 0.2);
+  border: 1px solid var(--color-emerald);
+  border-radius: 8px;
+  color: var(--color-emerald);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-align: center;
+  animation: pulseGlow 1.5s infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+
+/* ===================================================
+   RADAR INSTRUMENT (HOLO COMPASS HUD)
+   =================================================== */
+.radar-instrument-container {
+  width: 270px;
+  height: 270px;
+  margin: 10px auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radar-rings {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid var(--border-neon);
+}
+
+.ring-outer {
+  inset: 0;
+  border-color: rgba(0, 255, 157, 0.35);
+  box-shadow: 0 0 25px rgba(0, 255, 157, 0.15) inset;
+}
+
+.ring-mid {
+  inset: 22%;
+  border-color: rgba(139, 92, 246, 0.3);
+  border-style: dashed;
+}
+
+.ring-inner {
+  inset: 44%;
+  border-color: rgba(0, 255, 157, 0.2);
+}
+
+.radar-crosshair-h {
+  position: absolute;
+  top: 50%;
+  left: 5%;
+  right: 5%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.radar-crosshair-v {
+  position: absolute;
+  left: 50%;
+  top: 5%;
+  bottom: 5%;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.cardinal {
+  position: absolute;
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: var(--text-dim);
+}
+
+.cardinal-n { top: 6px; left: 50%; transform: translateX(-50%); color: var(--color-emerald); }
+.cardinal-e { right: 8px; top: 50%; transform: translateY(-50%); }
+.cardinal-s { bottom: 6px; left: 50%; transform: translateX(-50%); }
+.cardinal-w { left: 8px; top: 50%; transform: translateY(-50%); }
+
+/* Agulha Direcional */
+.radar-needle {
+  position: absolute;
+  width: 100px;
+  height: 140px;
+  transform-origin: 50px 105px;
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.needle-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 12px rgba(0, 255, 157, 0.6));
+}
+
+/* Ponto Central Você */
+.radar-center-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid var(--color-emerald);
+  position: relative;
+  z-index: 20;
+}
+
+.pulse-wave {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-emerald);
+  animation: pulseRipple 2s infinite ease-out;
+}
+
+@keyframes pulseRipple {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* ===================================================
+   BOTÕES DE AÇÃO DE 1 TOQUE (ERGONOMIA RAVE)
+   =================================================== */
+.action-bar-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.btn-action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  cursor: pointer;
+  border: none;
+  min-height: 58px;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.btn-action:active {
+  transform: scale(0.97);
+}
+
+.btn-action .btn-icon {
+  font-size: 1.8rem;
+  flex-shrink: 0;
+}
+
+.btn-action .btn-texts {
+  display: flex;
+  flex-direction: column;
+}
+
+.btn-action .btn-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.btn-action .btn-subtitle {
+  font-size: 0.72rem;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+/* Botão Fixar Barraca (Dourado/Âmbar Solar) */
+.btn-tent-fix {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  box-shadow: var(--shadow-amber);
+}
+
+.btn-tent-fix:active {
+  background: linear-gradient(135deg, #d97706, #b45309);
+}
+
+/* Botão Mirar Barraca (Verde Bioluminescente) */
+.btn-tent-aim {
+  background: rgba(0, 255, 157, 0.12);
+  border: 1px solid var(--color-emerald);
+  color: var(--color-emerald);
+  box-shadow: 0 0 15px rgba(0, 255, 157, 0.15);
+}
+
+.btn-tent-aim:active {
+  background: rgba(0, 255, 157, 0.25);
+}
+
+/* ===================================================
+   LISTA DA TRIBO EARTHDANCE
+   =================================================== */
+.tribe-section {
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+.tribe-header {
+  margin-bottom: 12px;
+}
+
+.tribe-header h3 {
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--color-violet);
+}
+
+.tribe-hint {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+.tribe-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tribe-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.tribe-card.is-active-target {
+  background: rgba(0, 255, 157, 0.12);
+  border-color: var(--color-emerald);
+  box-shadow: 0 0 15px rgba(0, 255, 157, 0.2);
+}
+
+.tribe-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tribe-avatar {
+  font-size: 1.3rem;
+}
+
+.tribe-user-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.tribe-user-meta {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.tribe-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-tribe-target {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  background: var(--color-emerald);
+  color: #000;
+  transition: transform 0.15s ease;
+}
+
+.btn-tribe-target:active {
+  transform: scale(0.94);
+}
+
+.btn-tribe-tent {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-amber);
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-amber);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.tribe-empty-state {
+  text-align: center;
+  padding: 20px 0;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+/* ===================================================
+   VIEW 2: MAPA TÁTICO
+   =================================================== */
+#view-map {
+  padding: 0;
+  height: calc(100vh - 120px);
+  position: relative;
+}
+
+.map-controls {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  z-index: 1000;
+}
+
+.btn-map-tool {
+  flex: 1;
+  padding: 10px 12px;
+  background: rgba(10, 16, 23, 0.9);
+  border: 1px solid var(--border-neon);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+.leaflet-map-wrapper {
+  width: 100%;
+  height: 100%;
+  background: #05080c;
+}
+
+/* Leaflet Dark Filter */
+.leaflet-tile {
+  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+}
+
+/* ===================================================
+   MODAL DE NICK (ENTRADA RÁPIDA)
+   =================================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 9999;
+  transition: opacity 0.25s ease;
+}
+
+.modal-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-neon);
+  border-radius: 20px;
+  padding: 24px 20px;
+  box-shadow: var(--shadow-neon);
+  position: relative;
+  overflow: hidden;
+}
+
+.modal-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.festival-symbol {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.modal-header h2 {
+  font-size: 1.25rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: var(--text-primary);
+}
+
+.modal-subtitle {
+  font-size: 0.75rem;
+  color: var(--color-emerald);
+  margin-top: 4px;
+}
+
+.modal-body label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.input-wrapper input {
+  width: 100%;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid var(--border-purple);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.input-wrapper input:focus {
+  border-color: var(--color-emerald);
+  box-shadow: 0 0 15px rgba(0, 255, 157, 0.3);
+}
+
+.modal-hint {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  margin: 10px 0 18px 0;
+  line-height: 1.4;
+}
+
+.btn-primary-earth {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, var(--color-emerald), #059669);
+  color: #000;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: var(--shadow-neon);
+  transition: transform 0.15s ease;
+}
+
+.btn-primary-earth:active {
+  transform: scale(0.97);
+}
+
+/* ===================================================
+   FOOTER
+   =================================================== */
+.app-footer {
+  padding: 10px 16px;
+  text-align: center;
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--bg-deep);
+}
+
+/* Helper */
+.hidden {
+  display: none !important;
+}
